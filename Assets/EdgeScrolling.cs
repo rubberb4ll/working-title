@@ -3,45 +3,111 @@ using UnityEngine.InputSystem;
 
 public class EdgeScrolling : MonoBehaviour
 {
-    private Vector2 hBound, vBound;
+    private MouseHandler handler;
     private Vector2 mousePosition;
+    private string mouseMode;
 
     private float speed = 50f;
-    private float hRotation, vRotation;
+    private float hDirection = 0f,
+            vDirection = 0f;
+    private float pitch, yaw;
 
-    private float currentTime = 0;
+    private bool isScrolling = false,
+        wait = false;
+    private float startTime = 0,
+        currentTime = 0;
 
     void Start()
     {
         Cursor.lockState = CursorLockMode.Confined;
+        handler = new MouseHandler();
 
-        int h = Screen.width / 5,
-            v = Screen.height / 3;
-        hBound = new Vector2(h, Screen.width - h);
-        vBound = new Vector2(v, Screen.height - v);
+        Vector3 angles = transform.eulerAngles;
+        pitch = angles.x;
+        yaw = angles.y;
     }
 
     void Update()
     {
         currentTime += Time.deltaTime;
-        Debug.Log(currentTime);
-        
         mousePosition = Mouse.current.position.ReadValue();
+        mouseMode = handler.CheckMouse(mousePosition);
+        handler.ChangeCursor();
 
-        if (mousePosition.x < hBound.x) // camera w
-            hRotation = -1f;
-        else if (mousePosition.x > hBound.y) // camera e
-            hRotation = 1f;
-        else hRotation = 0f;
-        if (mousePosition.y < vBound.x) // camera s
-            vRotation = -1f;
-        else if (mousePosition.y > vBound.y) // camera n
-            vRotation = 1f;
-        else vRotation = 0f;
+        if (mouseMode != "/")
+        {
+            if (!wait)
+            {
+                startTime = currentTime;
+                wait = true;
+            }
+            else
+            {
+                if (currentTime - startTime >= 1f)
+                {
+                    isScrolling = true;
+                    wait = false;
+                }
+            }
+        }
+        else
+        {
+            isScrolling = false;
+            wait = false;
+        }
 
-        transform.Rotate(vRotation * speed * Time.deltaTime,
-            hRotation * speed * Time.deltaTime,
-            0f,
-            Space.Self);
+        if (isScrolling)
+            Scroll();
+    }
+
+    void Scroll()
+    {
+        switch (mouseMode)
+        {
+            case "w":
+                hDirection = -1f;
+                vDirection = 0f;
+                break;
+            case "e":
+                hDirection = 1f;
+                vDirection = 0f;
+                break;
+            case "s":
+                hDirection = 0f;
+                vDirection = 1f;
+                break;
+            case "n":
+                hDirection = 0f;
+                vDirection = -1f;
+                break;
+
+            case "sw":
+                hDirection = -1f;
+                vDirection = 1f;
+                break;
+            case "se":
+                hDirection = 1f;
+                vDirection = 1f;
+                break;
+            case "nw":
+                hDirection = -1f;
+                vDirection = -1f;
+                break;
+            case "ne":
+                hDirection = 1f;
+                vDirection = -1f;
+                break;
+
+            default:
+                hDirection = 0f;
+                vDirection = 0f;
+                break;
+        }
+
+        yaw += hDirection * speed * Time.deltaTime;
+        pitch += vDirection * speed * Time.deltaTime;
+        pitch = Mathf.Clamp(pitch, -45f, 45f);
+
+        transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
     }
 }
